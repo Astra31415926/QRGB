@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>▣ QRGB ULTRA - Pro Engine v3.8</title>
+    <title>▣ QRGB ULTRA - Pro Engine v3.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <style>
-        body { background: #000; color: #fff; font-family: system-ui, sans-serif; }
+        body { background: #000; color: #fff; font-family: system-ui, sans-serif; overflow-x: hidden; }
         canvas { image-rendering: pixelated; }
         textarea { background: #0a0a0a; border: 1px solid #333; color: #fff; }
         .scan-line { position:absolute; left:0; right:0; height:2px; background:#00ff41; box-shadow:0 0 15px #00ff41; animation:scan 3s linear infinite; z-index: 10; }
@@ -25,7 +25,7 @@
 
     <div class="flex items-center justify-between mb-6">
         <canvas id="mini-qr" width="44" height="44" class="rounded bg-zinc-900 border border-white/10"></canvas>
-        <h1 class="text-[10px] tracking-[0.4em] font-black text-zinc-500 uppercase text-center flex-1">QRGB Engine v3.8</h1>
+        <h1 class="text-[10px] tracking-[0.4em] font-black text-zinc-500 uppercase text-center flex-1">QRGB Engine v3.9</h1>
         <div class="w-10"></div>
     </div>
 
@@ -56,10 +56,9 @@
             <button onclick="closeScanner()" class="text-white bg-zinc-800 px-6 py-2 rounded-xl text-[10px] font-black">CLOSE</button>
         </div>
         
-        <!-- Контейнер для превью (видео или фото) -->
-        <div class="relative w-full aspect-square bg-zinc-950 rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+        <div class="relative w-full aspect-square bg-zinc-950 rounded-3xl overflow-hidden border border-white/10 shadow-2xl flex items-center justify-center">
             <video id="video" class="absolute inset-0 w-full h-full object-cover" playsinline></video>
-            <canvas id="freeze-frame" class="absolute inset-0 w-full h-full object-contain hidden"></canvas>
+            <canvas id="freeze-frame" class="max-w-full max-h-full object-contain hidden z-10"></canvas>
             <div id="scan-line-view" class="scan-line"></div>
             <div id="flash-layer" class="absolute inset-0 bg-white opacity-0 pointer-events-none z-50"></div>
         </div>
@@ -151,6 +150,7 @@
             if (els.video.srcObject) els.video.srcObject.getTracks().forEach(t => t.stop());
             document.getElementById('scanner-ui').classList.add('hidden');
             els.freeze.classList.add('hidden');
+            els.video.classList.remove('hidden');
             document.getElementById('scan-line-view').classList.remove('hidden');
         }
 
@@ -170,150 +170,107 @@
                 els.video.play();
                 scanning = true;
                 requestAnimationFrame(scanFrame);
-            } catch (e) { alert("Camera Lock"); ui.classList.add('hidden'); }
+            } catch (e) { alert("Camera Error"); closeScanner(); }
         }
 
         function scanFrame() {
             if (!scanning || scanCaptured) return;
             if (els.video.readyState === els.video.HAVE_ENOUGH_DATA) {
                 const cv = document.createElement('canvas');
-                cv.width = els.video.videoWidth; cv.height = els.video.videoHeight;
+                cv.width = 480; cv.height = 480;
                 const cx = cv.getContext('2d');
-                cx.drawImage(els.video, 0, 0);
-                processImageData(cx.getImageData(0,0,cv.width,cv.height), cv.width, cv.height);
+                cx.drawImage(els.video, 0, 0, 480, 480);
+                processImageData(cx.getImageData(0,0,480,480), 480, 480);
             }
             requestAnimationFrame(scanFrame);
         }
 
         function processImageData(img, w, h) {
-            let foundInThisSession = false;
-            [0,1,2].forEach(idx => {
-                const ch = ['r','g','b'][idx];
+            let foundAny = false;
+            [0, 1, 2].forEach(idx => {
+                const ch = ['r', 'g', 'b'][idx];
                 if (results[ch]) return;
+
                 const mono = new Uint8ClampedArray(img.data.length);
                 for (let i = 0; i < img.data.length; i += 4) {
-                    const v = img.data[i + idx];
-                    const others = (img.data[i+(idx+1)%3] + img.data[i+(idx+2)%3]) / 2;
-                    // Адаптивный порог: канал должен быть ярче среднего других каналов
-                    const isMain = v > 80 && v > others * 1.2;
+                    const r = img.data[i], g = img.data[i + 1], b = img.data[i + 2];
+                    let val = img.data[i + idx];
+                    let others = (idx === 0) ? (g+b)/2 : (idx === 1 ? (r+b)/2 : (r+g)/2);
+                    
+                    const isMain = val > 70 && val > others * 1.15;
                     mono[i] = mono[i+1] = mono[i+2] = isMain ? 0 : 255;
                     mono[i+3] = 255;
                 }
+
                 const code = jsQR(mono, w, h);
                 if (code) {
                     results[ch] = code.data;
-                    foundInThisSession = true;
+                    foundAny = true;
                     const el = document.getElementById('res-'+ch);
                     el.querySelector('span').textContent = code.data;
-                    el.querySelector('.indicator').classList.add('active-'+ch);
-                    if (ch === 'b') { doCapture(); } else {
+                    el.querySelector('.indicator').className = 'indicator active-'+ch;
+                    
+                    if (ch === 'b' || (results.r && results.g && results.b)) {
+                        doCapture();
+                    } else {
                         beep(false);
                         if(!timer) timer = setTimeout(doCapture, 1500);
                     }
                 }
             });
-            return foundInThisSession;
+            return foundAny;
         }
 
         function doCapture() {
             if (scanCaptured) return;
             scanCaptured = true;
             clearTimeout(timer); timer = null;
-            els.freeze.width = els.video.videoWidth;
-            els.freeze.height = els.video.videoHeight;
-            els.freeze.getContext('2d').drawImage(els.video, 0, 0);
+            
+            els.freeze.width = 600; els.freeze.height = 600;
+            const fctx = els.freeze.getContext('2d');
+            if (scanning) fctx.drawImage(els.video, 0, 0, 600, 600);
+            
             els.freeze.classList.remove('hidden');
+            els.video.classList.add('hidden');
             document.getElementById('scan-line-view').classList.add('hidden');
             document.getElementById('flash-layer').classList.add('flash-effect');
             beep(true);
             setTimeout(() => document.getElementById('flash-layer').classList.remove('flash-effect'), 400);
+            scanning = false;
         }
 
         function handleFile(e) {
             const file = e.target.files[0];
             if (!file) return;
-            
-            // 1. Остановка камеры и сброс состояния
-            if (els.video.srcObject) {
-                els.video.srcObject.getTracks().forEach(t => t.stop());
-                els.video.srcObject = null;
-            }
-            
-            results = {r:null, g:null, b:null};
-            scanCaptured = false;
-            timer = null;
-            
-            // Открытие UI сканера
-            const ui = document.getElementById('scanner-ui');
-            ui.classList.remove('hidden');
-            
-            // Сброс индикаторов
-            ['r','g','b'].forEach(ch => {
-                const el = document.getElementById('res-'+ch);
-                el.querySelector('span').textContent = ch.toUpperCase() + ': Waiting...';
-                el.querySelector('.indicator').className = 'indicator';
-            });
-
             const reader = new FileReader();
             reader.onload = (ev) => {
                 const img = new Image();
                 img.onload = () => {
-                    // --- 2. Визуальное отображение (Fit Contain) ---
-                    const container = els.freeze.parentElement;
-                    const cw = container.clientWidth;
-                    const ch = container.clientHeight;
+                    results = {r:null, g:null, b:null};
+                    document.getElementById('scanner-ui').classList.remove('hidden');
                     
-                    // Устанавливаем размер канваса равным контейнеру
-                    els.freeze.width = cw;
-                    els.freeze.height = ch;
+                    const displaySize = 600;
+                    els.freeze.width = displaySize;
+                    els.freeze.height = displaySize;
                     const fctx = els.freeze.getContext('2d');
+                    fctx.fillStyle = "#000"; fctx.fillRect(0, 0, displaySize, displaySize);
                     
-                    // Очистка
-                    fctx.fillStyle = "#000";
-                    fctx.fillRect(0, 0, cw, ch);
-                    
-                    // Расчет масштаба (Contain)
-                    const scale = Math.min(cw / img.width, ch / img.height);
-                    const nw = img.width * scale;
-                    const nh = img.height * scale;
-                    const dx = (cw - nw) / 2;
-                    const dy = (ch - nh) / 2;
-                    
-                    // Отрисовка по центру
-                    fctx.drawImage(img, dx, dy, nw, nh);
+                    const scale = Math.min(displaySize / img.width, displaySize / img.height);
+                    const nw = img.width * scale, nh = img.height * scale;
+                    fctx.drawImage(img, (displaySize - nw) / 2, (displaySize - nh) / 2, nw, nh);
                     
                     els.freeze.classList.remove('hidden');
-                    els.video.classList.add('hidden'); // Скрываем видео элемент
+                    els.video.classList.add('hidden');
                     document.getElementById('scan-line-view').classList.add('hidden');
-
-                    // --- 3. Подготовка к сканированию (Resize + Normalize) ---
-                    const maxDim = 1024;
-                    let sw = img.width, sh = img.height;
                     
-                    // Масштабирование до 1024px
-                    if (sw > maxDim || sh > maxDim) {
-                        const ratio = Math.min(maxDim/sw, maxDim/sh);
-                        sw = Math.floor(sw * ratio);
-                        sh = Math.floor(sh * ratio);
-                    }
-                    
+                    const scanSize = 1024;
                     const scanCanvas = document.createElement('canvas');
-                    scanCanvas.width = sw;
-                    scanCanvas.height = sh;
+                    scanCanvas.width = scanSize; scanCanvas.height = scanSize;
                     const sctx = scanCanvas.getContext('2d');
+                    sctx.filter = 'contrast(1.2) brightness(1.1)';
+                    sctx.drawImage(img, 0, 0, scanSize, scanSize);
                     
-                    // Нормализация: усиливаем контраст и яркость для jsQR
-                    sctx.filter = 'contrast(1.4) brightness(1.1)';
-                    sctx.drawImage(img, 0, 0, sw, sh);
-                    
-                    const imageData = sctx.getImageData(0, 0, sw, sh);
-                    
-                    // --- 4. Запуск обработки каналов ---
-                    const found = processImageData(imageData, sw, sh);
-                    
-                    if (found) {
-                        // Имитация события захвата
-                        scanCaptured = true;
+                    if(processImageData(sctx.getImageData(0,0,scanSize,scanSize), scanSize, scanSize)) {
                         beep(true);
                         document.getElementById('flash-layer').classList.add('flash-effect');
                         setTimeout(() => document.getElementById('flash-layer').classList.remove('flash-effect'), 400);
@@ -326,7 +283,7 @@
 
         function saveQR() {
             const a = document.createElement('a');
-            a.download = 'QRGB_SCAN.png'; a.href = els.main.toDataURL(); a.click();
+            a.download = 'QRGB_PRO.png'; a.href = els.main.toDataURL(); a.click();
         }
     </script>
 </body>
