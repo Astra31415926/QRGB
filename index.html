@@ -3,15 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>▣ QRGB ULTRA - Final Interface</title>
+    <title>▣ QRGB ULTRA - Pro Engine v3.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <style>
         body { background: #000; color: #fff; font-family: system-ui, sans-serif; }
         canvas { image-rendering: pixelated; }
-        textarea { background: #0a0a0a; border: 1px solid #333; color: #fff; transition: all 0.3s; }
-        textarea:focus { border-color: #555; background: #111; }
+        textarea { background: #0a0a0a; border: 1px solid #333; color: #fff; }
         .scan-line { position:absolute; left:0; right:0; height:2px; background:#00ff41; box-shadow:0 0 15px #00ff41; animation:scan 3s linear infinite; z-index: 10; }
         @keyframes scan { 0%{top:0%} 100%{top:100%} }
         .flash-effect { animation: flash 0.3s ease-out forwards; }
@@ -26,7 +25,7 @@
 
     <div class="flex items-center justify-between mb-6">
         <canvas id="mini-qr" width="44" height="44" class="rounded bg-zinc-900 border border-white/10"></canvas>
-        <h1 class="text-[10px] tracking-[0.4em] font-black text-zinc-500 uppercase">QRGB ENGINE v3.5</h1>
+        <h1 class="text-[10px] tracking-[0.4em] font-black text-zinc-500 uppercase text-center flex-1">QRGB Engine v3.8</h1>
         <div class="w-10"></div>
     </div>
 
@@ -43,11 +42,9 @@
     </div>
 
     <div class="space-y-3 pb-4">
-        <button id="save-btn" onclick="saveQR()" class="w-full py-4 bg-white text-black font-black rounded-2xl hidden active:scale-95 transition-all text-xs tracking-widest uppercase">Save Result</button>
-        
+        <button id="save-btn" onclick="saveQR()" class="w-full py-4 bg-white text-black font-black rounded-2xl hidden active:scale-95 text-xs tracking-widest uppercase">Save Result</button>
         <div class="grid grid-cols-2 gap-3">
             <button onclick="toggleScanner()" class="py-4 bg-zinc-900 text-white font-bold rounded-2xl border border-white/10 active:scale-95 text-[10px] uppercase tracking-widest">Open Camera</button>
-            
             <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleFile(event)">
             <button onclick="document.getElementById('file-input').click()" class="py-4 bg-zinc-900 text-white font-bold rounded-2xl border border-white/10 active:scale-95 text-[10px] uppercase tracking-widest">Open Gallery</button>
         </div>
@@ -55,8 +52,8 @@
 
     <div id="scanner-ui" class="fixed inset-0 z-[100] bg-black hidden flex flex-col p-6">
         <div class="flex justify-between items-center mb-6">
-            <span class="text-[10px] text-zinc-600 font-bold uppercase tracking-widest">Optical Sensor</span>
-            <button onclick="toggleScanner()" class="text-white bg-zinc-800 px-6 py-2 rounded-xl text-[10px] font-black uppercase">Close</button>
+            <span class="text-[10px] text-zinc-600 font-bold uppercase tracking-widest">Spectral Analysis</span>
+            <button onclick="closeScanner()" class="text-white bg-zinc-800 px-6 py-2 rounded-xl text-[10px] font-black">CLOSE</button>
         </div>
         
         <div class="relative w-full aspect-square bg-zinc-950 rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
@@ -69,15 +66,15 @@
         <div class="mt-8 space-y-3">
             <div id="res-r" class="p-4 bg-zinc-900/60 rounded-2xl flex items-center gap-4 border border-white/5">
                 <div class="indicator"></div>
-                <span class="text-[10px] text-zinc-500 uppercase tracking-tighter">Red: Waiting...</span>
+                <span class="text-[10px] text-zinc-500 uppercase tracking-tighter">R: Waiting...</span>
             </div>
             <div id="res-g" class="p-4 bg-zinc-900/60 rounded-2xl flex items-center gap-4 border border-white/5">
                 <div class="indicator"></div>
-                <span class="text-[10px] text-zinc-500 uppercase tracking-tighter">Green: Waiting...</span>
+                <span class="text-[10px] text-zinc-500 uppercase tracking-tighter">G: Waiting...</span>
             </div>
             <div id="res-b" class="p-4 bg-zinc-900/60 rounded-2xl flex items-center gap-4 border border-blue-500/20">
                 <div class="indicator"></div>
-                <span class="text-[10px] text-zinc-400 font-black uppercase tracking-tighter">Blue: Priority Ready</span>
+                <span class="text-[10px] text-zinc-400 font-black uppercase tracking-tighter">B: Priority Ready</span>
             </div>
         </div>
     </div>
@@ -114,7 +111,6 @@
                 document.getElementById('save-btn').classList.add('hidden');
                 return;
             }
-
             let maxVer = 1;
             texts.forEach(t => {
                 if(!t.trim()) return;
@@ -122,11 +118,9 @@
                 const v = Math.floor((tmp.getModuleCount() - 17) / 4);
                 if (v > maxVer) maxVer = v;
             });
-
             const ctx = els.main.getContext('2d');
             ctx.fillStyle = "#000"; ctx.fillRect(0,0,512,512);
             ctx.globalCompositeOperation = "lighten";
-
             texts.forEach((text, i) => {
                 if(!text.trim()) return;
                 const qr = qrcode(maxVer, 'M'); qr.addData(text); qr.make();
@@ -138,7 +132,6 @@
                     }
                 }
             });
-
             ctx.globalCompositeOperation = "source-over";
             els.main.style.opacity = 1;
             document.getElementById('save-btn').classList.remove('hidden');
@@ -152,31 +145,31 @@
         let results = {r:null, g:null, b:null};
         let timer = null;
 
+        function closeScanner() {
+            scanning = false;
+            if (els.video.srcObject) els.video.srcObject.getTracks().forEach(t => t.stop());
+            document.getElementById('scanner-ui').classList.add('hidden');
+            els.freeze.classList.add('hidden');
+            document.getElementById('scan-line-view').classList.remove('hidden');
+        }
+
         async function toggleScanner() {
             const ui = document.getElementById('scanner-ui');
-            if (scanning) {
-                scanning = false;
-                if (els.video.srcObject) els.video.srcObject.getTracks().forEach(t => t.stop());
-                ui.classList.add('hidden');
-                els.freeze.classList.add('hidden');
-                document.getElementById('scan-line-view').classList.remove('hidden');
-            } else {
-                scanCaptured = false;
-                results = {r:null, g:null, b:null};
-                ['r','g','b'].forEach(ch => {
-                    const el = document.getElementById('res-'+ch);
-                    el.querySelector('span').textContent = ch.toUpperCase() + ': Waiting...';
-                    el.querySelector('.indicator').className = 'indicator';
-                });
-                ui.classList.remove('hidden');
-                try {
-                    const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                    els.video.srcObject = s;
-                    els.video.play();
-                    scanning = true;
-                    requestAnimationFrame(scanFrame);
-                } catch (e) { alert("Camera Lock"); ui.classList.add('hidden'); }
-            }
+            scanCaptured = false;
+            results = {r:null, g:null, b:null};
+            ['r','g','b'].forEach(ch => {
+                const el = document.getElementById('res-'+ch);
+                el.querySelector('span').textContent = ch.toUpperCase() + ': Waiting...';
+                el.querySelector('.indicator').className = 'indicator';
+            });
+            ui.classList.remove('hidden');
+            try {
+                const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                els.video.srcObject = s;
+                els.video.play();
+                scanning = true;
+                requestAnimationFrame(scanFrame);
+            } catch (e) { alert("Camera Lock"); ui.classList.add('hidden'); }
         }
 
         function scanFrame() {
@@ -192,6 +185,7 @@
         }
 
         function processImageData(img, w, h) {
+            let foundInThisSession = false;
             [0,1,2].forEach(idx => {
                 const ch = ['r','g','b'][idx];
                 if (results[ch]) return;
@@ -199,13 +193,14 @@
                 for (let i = 0; i < img.data.length; i += 4) {
                     const v = img.data[i + idx];
                     const others = (img.data[i+(idx+1)%3] + img.data[i+(idx+2)%3]) / 2;
-                    const isMain = v > 105 && v > others * 1.15;
+                    const isMain = v > 100 && v > others * 1.1;
                     mono[i] = mono[i+1] = mono[i+2] = isMain ? 0 : 255;
                     mono[i+3] = 255;
                 }
                 const code = jsQR(mono, w, h);
                 if (code) {
                     results[ch] = code.data;
+                    foundInThisSession = true;
                     const el = document.getElementById('res-'+ch);
                     el.querySelector('span').textContent = code.data;
                     el.querySelector('.indicator').classList.add('active-'+ch);
@@ -215,10 +210,11 @@
                     }
                 }
             });
+            return foundInThisSession;
         }
 
         function doCapture() {
-            if (scanCaptured || !scanning) return;
+            if (scanCaptured) return;
             scanCaptured = true;
             clearTimeout(timer); timer = null;
             els.freeze.width = els.video.videoWidth;
@@ -238,23 +234,35 @@
             reader.onload = (ev) => {
                 const img = new Image();
                 img.onload = () => {
-                    // Принудительно открываем UI результатов (как камеру, но без видео)
                     results = {r:null, g:null, b:null};
                     document.getElementById('scanner-ui').classList.remove('hidden');
-                    document.getElementById('scan-line-view').classList.add('hidden');
+                    
+                    // Умное масштабирование для анализа
+                    const maxDim = 1024;
+                    let w = img.width, h = img.height;
+                    if (w > maxDim || h > maxDim) {
+                        const ratio = Math.min(maxDim/w, maxDim/h);
+                        w *= ratio; h *= ratio;
+                    }
                     
                     const cv = document.createElement('canvas');
-                    cv.width = img.width; cv.height = img.height;
+                    cv.width = w; cv.height = h;
                     const cx = cv.getContext('2d');
-                    cx.drawImage(img, 0, 0);
+                    cx.drawImage(img, 0, 0, w, h);
                     
-                    // Показываем фото вместо видео
-                    els.freeze.width = cv.width; els.freeze.height = cv.height;
-                    els.freeze.getContext('2d').drawImage(img, 0, 0);
+                    // Показываем фото в рамке (правильно вписанным)
+                    els.freeze.width = els.video.clientWidth * window.devicePixelRatio;
+                    els.freeze.height = els.video.clientHeight * window.devicePixelRatio;
+                    const fctx = els.freeze.getContext('2d');
+                    const scale = Math.max(els.freeze.width/img.width, els.freeze.height/img.height);
+                    const nw = img.width * scale, nh = img.height * scale;
+                    fctx.drawImage(img, (els.freeze.width-nw)/2, (els.freeze.height-nh)/2, nw, nh);
                     els.freeze.classList.remove('hidden');
+                    document.getElementById('scan-line-view').classList.add('hidden');
                     
-                    processImageData(cx.getImageData(0,0,cv.width,cv.height), cv.width, cv.height);
-                    beep(true);
+                    const found = processImageData(cx.getImageData(0,0,w,h), w, h);
+                    if (found) { beep(true); document.getElementById('flash-layer').classList.add('flash-effect'); }
+                    setTimeout(() => document.getElementById('flash-layer').classList.remove('flash-effect'), 400);
                 };
                 img.src = ev.target.result;
             };
@@ -263,7 +271,7 @@
 
         function saveQR() {
             const a = document.createElement('a');
-            a.download = 'QRGB_PRO.png'; a.href = els.main.toDataURL(); a.click();
+            a.download = 'QRGB_SCAN.png'; a.href = els.main.toDataURL(); a.click();
         }
     </script>
 </body>
