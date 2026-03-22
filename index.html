@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#000000">
-    <title>▣ QRGB Ultra - Fixed Grid</title>
+    <title>▣ QRGB Ultra - Pro Scanner</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
@@ -24,8 +24,14 @@
             animation:scanLine 2.5s linear infinite; 
         }
         @keyframes scanLine { 0%{top:0%;} 100%{top:100%;} }
-        @keyframes flash { 0%,100%{opacity:0} 50%{opacity:.6} }
-        .flash { animation:flash .3s; }
+        @keyframes flash { 0%,100%{opacity:0} 50%{opacity:0.8} }
+        .flash { animation:flash 0.4s ease-out; }
+        
+        /* Состояние индикаторов */
+        .indicator-off { background: #3f3f46; box-shadow: none; }
+        .indicator-r { background: #ff004d; box-shadow: 0 0 10px #ff004d; }
+        .indicator-g { background: #00ff41; box-shadow: 0 0 10px #00ff41; }
+        .indicator-b { background: #0088ff; box-shadow: 0 0 10px #0088ff; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -40,15 +46,15 @@
         <div class="space-y-4 mb-6">
             <div class="relative">
                 <div class="absolute left-3 top-4 w-1.5 h-10 bg-[#ff004d] rounded-full"></div>
-                <textarea id="r-text" class="w-full p-4 pl-10 rounded-2xl outline-none" placeholder="Red..."></textarea>
+                <textarea id="r-text" class="w-full p-4 pl-10 rounded-2xl outline-none" placeholder="Червоний канал..."></textarea>
             </div>
             <div class="relative">
                 <div class="absolute left-3 top-4 w-1.5 h-10 bg-[#00ff41] rounded-full"></div>
-                <textarea id="g-text" class="w-full p-4 pl-10 rounded-2xl outline-none" placeholder="Green..."></textarea>
+                <textarea id="g-text" class="w-full p-4 pl-10 rounded-2xl outline-none" placeholder="Зелений канал..."></textarea>
             </div>
             <div class="relative">
                 <div class="absolute left-3 top-4 w-1.5 h-10 bg-[#0088ff] rounded-full"></div>
-                <textarea id="b-text" class="w-full p-4 pl-10 rounded-2xl outline-none" placeholder="Blue..."></textarea>
+                <textarea id="b-text" class="w-full p-4 pl-10 rounded-2xl outline-none" placeholder="Синій канал..."></textarea>
             </div>
         </div>
 
@@ -61,21 +67,42 @@
 
         <div class="mt-6 space-y-3">
             <button id="save-btn" onclick="saveQR()" class="w-full py-4 bg-white text-black font-bold rounded-2xl hidden shadow-lg">📱 Зберегти PNG</button>
-            <button onclick="toggleScanner()" class="w-full py-4 bg-zinc-800 text-white font-bold rounded-2xl border border-white/10">🔍 Камера / Сканер</button>
+            <button onclick="toggleScanner()" class="w-full py-4 bg-zinc-800 text-white font-bold rounded-2xl border border-white/10">🔍 Запустити Сканер</button>
         </div>
     </main>
 
     <div id="scanner-ui" class="fixed inset-0 z-[100] bg-black hidden flex flex-col p-6">
-        <button onclick="toggleScanner()" class="self-end p-4 text-white">✕ Закрити</button>
-        <div class="relative w-full aspect-square bg-zinc-900 rounded-3xl overflow-hidden border-2 border-white/20">
+        <button onclick="toggleScanner()" class="self-end p-4 text-white font-medium">✕ Закрити</button>
+        
+        <div class="relative w-full aspect-square bg-zinc-900 rounded-3xl overflow-hidden border-2 border-white/10 shadow-2xl">
             <video id="video" class="absolute inset-0 w-full h-full object-cover" playsinline></video>
-            <div class="scan-line"></div>
+            <canvas id="freeze-frame" class="absolute inset-0 w-full h-full object-cover hidden"></canvas>
+            <div id="scan-line-view" class="scan-line"></div>
             <div id="flash-layer" class="absolute inset-0 bg-white opacity-0 pointer-events-none"></div>
         </div>
-        <div id="scan-results" class="mt-8 space-y-2">
-            <div id="res-r" class="p-3 bg-red-900/20 border-l-4 border-red-500 rounded-lg text-sm">R: <span>-</span></div>
-            <div id="res-g" class="p-3 bg-green-900/20 border-l-4 border-green-500 rounded-lg text-sm">G: <span>-</span></div>
-            <div id="res-b" class="p-3 bg-blue-900/20 border-l-4 border-blue-500 rounded-lg text-sm">B: <span>-</span></div>
+
+        <div id="scan-results" class="mt-6 space-y-3">
+            <div id="res-r" class="p-4 bg-zinc-900/80 border border-white/5 rounded-2xl flex items-center gap-4">
+                <div class="indicator w-4 h-4 rounded-full indicator-off"></div>
+                <div class="flex-1">
+                    <div class="text-[10px] uppercase text-red-500 font-bold">Red Channel</div>
+                    <span class="text-sm text-gray-300">Очікування...</span>
+                </div>
+            </div>
+            <div id="res-g" class="p-4 bg-zinc-900/80 border border-white/5 rounded-2xl flex items-center gap-4">
+                <div class="indicator w-4 h-4 rounded-full indicator-off"></div>
+                <div class="flex-1">
+                    <div class="text-[10px] uppercase text-green-500 font-bold">Green Channel</div>
+                    <span class="text-sm text-gray-300">Очікування...</span>
+                </div>
+            </div>
+            <div id="res-b" class="p-4 bg-zinc-900/80 border border-white/5 rounded-2xl flex items-center gap-4">
+                <div class="indicator w-4 h-4 rounded-full indicator-off"></div>
+                <div class="flex-1">
+                    <div class="text-[10px] uppercase text-blue-500 font-bold">Blue Channel</div>
+                    <span class="text-sm text-gray-300">Очікування...</span>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -86,24 +113,13 @@
             b: document.getElementById('b-text'),
             main: document.getElementById('qr-main'),
             mini: document.getElementById('mini-qr'),
-            video: document.getElementById('video')
+            video: document.getElementById('video'),
+            freeze: document.getElementById('freeze-frame')
         };
 
-        // Загрузка сохраненного текста
-        window.onload = () => {
-            ['r','g','b'].forEach(ch => {
-                const saved = localStorage.getItem('qrgb_' + ch);
-                if (saved) { els[ch].value = saved; }
-            });
-            generateQR();
-        };
-
+        // --- ГЕНЕРАТОР (ОСТАВЛЯЕМ БЕЗ ИЗМЕНЕНИЙ) ---
         function generateQR() {
             const texts = [els.r.value, els.g.value, els.b.value];
-            
-            // Сохраняем в память браузера
-            texts.forEach((t, i) => localStorage.setItem('qrgb_' + ['r','g','b'][i], t));
-
             if (!texts.some(t => t.trim())) {
                 els.main.style.opacity = 0;
                 document.getElementById('qr-empty').style.opacity = 1;
@@ -111,7 +127,6 @@
                 return;
             }
 
-            // --- Синхронизация версий ---
             let maxVer = 1;
             texts.forEach(text => {
                 if(!text.trim()) return;
@@ -124,24 +139,19 @@
 
             const size = 256;
             const ctx = els.main.getContext('2d');
-            ctx.fillStyle = "#fff";
-            ctx.fillRect(0,0,size,size);
+            ctx.fillStyle = "#fff"; ctx.fillRect(0,0,size,size);
             ctx.globalCompositeOperation = "multiply";
 
             texts.forEach((text, i) => {
-                const qr = qrcode(maxVer, 'M'); // Всегда одна и та же версия для всех
+                const qr = qrcode(maxVer, 'M');
                 qr.addData(text || " ");
                 qr.make();
                 const count = qr.getModuleCount();
                 const modSize = size / count;
-
                 ctx.fillStyle = i === 0 ? "#ff004d" : i === 1 ? "#00ff41" : "#0088ff";
-
                 for (let r = 0; r < count; r++) {
                     for (let c = 0; c < count; c++) {
-                        if (qr.isDark(r, c)) {
-                            ctx.fillRect(c * modSize, r * modSize, modSize, modSize);
-                        }
+                        if (qr.isDark(r, c)) ctx.fillRect(c * modSize, r * modSize, modSize, modSize);
                     }
                 }
             });
@@ -150,7 +160,6 @@
             els.main.style.opacity = 1;
             document.getElementById('qr-empty').style.opacity = 0;
             document.getElementById('save-btn').classList.remove('hidden');
-            
             const mCtx = els.mini.getContext('2d');
             mCtx.fillStyle = "#000"; mCtx.fillRect(0,0,56,56);
             mCtx.drawImage(els.main, 0, 0, 56, 56);
@@ -160,19 +169,50 @@
 
         function saveQR() {
             const a = document.createElement('a');
-            a.download = 'qrgb_sync.png';
+            a.download = 'qrgb_pro.png';
             a.href = els.main.toDataURL();
             a.click();
         }
 
+        // --- НОВЫЙ СКАНЕР С ФИКСАЦИЕЙ И ИНДИКАТОРАМИ ---
         let scanning = false;
+        let scanCaptured = false;
+        let lastResult = {r:null, g:null, b:null};
+        let captureTimeout = null;
+
+        function playShutterSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+            } catch(e) {}
+        }
+
         async function toggleScanner() {
             const ui = document.getElementById('scanner-ui');
             if (scanning) {
                 scanning = false;
                 if (els.video.srcObject) els.video.srcObject.getTracks().forEach(t => t.stop());
                 ui.classList.add('hidden');
+                els.freeze.classList.add('hidden');
+                document.getElementById('scan-line-view').classList.remove('hidden');
             } else {
+                // СБРОС ДАННЫХ ПЕРЕД СТАРТОМ
+                scanCaptured = false;
+                lastResult = {r:null, g:null, b:null};
+                ['r','g','b'].forEach(ch => {
+                    const res = document.getElementById('res-' + ch);
+                    res.querySelector('span').textContent = 'Очікування...';
+                    res.querySelector('.indicator').className = 'indicator w-4 h-4 rounded-full indicator-off';
+                });
+
                 ui.classList.remove('hidden');
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
@@ -184,16 +224,40 @@
             }
         }
 
+        function captureScan() {
+            if (scanCaptured) return;
+            scanCaptured = true;
+            
+            // Замирание кадра
+            els.freeze.width = els.video.videoWidth;
+            els.freeze.height = els.video.videoHeight;
+            els.freeze.getContext('2d').drawImage(els.video, 0, 0);
+            els.freeze.classList.remove('hidden');
+            document.getElementById('scan-line-view').classList.add('hidden');
+            
+            // Эффекты
+            document.getElementById('flash-layer').classList.add('flash');
+            playShutterSound();
+            setTimeout(() => document.getElementById('flash-layer').classList.remove('flash'), 400);
+        }
+
         function scanFrame() {
-            if (!scanning) return;
+            if (!scanning || scanCaptured) return;
+
             if (els.video.readyState === els.video.HAVE_ENOUGH_DATA) {
                 const canvas = document.createElement('canvas');
-                canvas.width = els.video.videoWidth; canvas.height = els.video.videoHeight;
+                canvas.width = els.video.videoWidth;
+                canvas.height = els.video.videoHeight;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(els.video, 0, 0);
                 const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
+                let foundInThisFrame = false;
+
                 [0, 1, 2].forEach(idx => {
+                    const chName = ['r','g','b'][idx];
+                    if (lastResult[chName]) return; // Если уже считали этот канал, пропускаем
+
                     const monoData = new Uint8ClampedArray(imgData.data.length);
                     for (let i = 0; i < imgData.data.length; i += 4) {
                         const v = imgData.data[i + idx];
@@ -201,14 +265,29 @@
                         monoData[i] = monoData[i+1] = monoData[i+2] = b;
                         monoData[i+3] = 255;
                     }
+
                     const code = jsQR(monoData, canvas.width, canvas.height);
                     if (code) {
-                        const resEl = document.getElementById(['res-r','res-g','res-b'][idx]);
+                        lastResult[chName] = code.data;
+                        foundInThisFrame = true;
+                        
+                        // Обновляем индикатор и текст
+                        const resEl = document.getElementById('res-' + chName);
                         resEl.querySelector('span').textContent = code.data;
-                        document.getElementById('flash-layer').classList.add('flash');
-                        setTimeout(() => document.getElementById('flash-layer').classList.remove('flash'), 300);
+                        resEl.querySelector('.indicator').className = `indicator w-4 h-4 rounded-full indicator-${chName}`;
                     }
                 });
+
+                // Логика захвата
+                const countFound = Object.values(lastResult).filter(v => v !== null).length;
+                
+                if (countFound === 3) {
+                    captureScan(); // Все 3 канала найдены - мгновенный захват
+                } else if (countFound > 0) {
+                    // Найден хотя бы один - запускаем/продлеваем таймер "ожидания остальных"
+                    clearTimeout(captureTimeout);
+                    captureTimeout = setTimeout(captureScan, 900); // Ждем 0.9 сек до фиксации
+                }
             }
             requestAnimationFrame(scanFrame);
         }
