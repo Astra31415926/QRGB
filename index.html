@@ -1,1 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QRGB</title>
+    <style>
+        body { background-color: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+        h1 { margin-bottom: 20px; }
+        .input-group { width: 100%; max-width: 400px; margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; margin: 5px 0; border-radius: 8px; border: 1px solid #444; background: #222; color: #fff; box-sizing: border-box; }
+        .display-container { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 10px; }
+        .block { height: 100px; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 12px; text-shadow: 1px 1px 2px #000; font-size: 1.2rem; }
+        #block-r { background-color: #ff4444; }
+        #block-g { background-color: #44ff44; color: #000; text-shadow: none; }
+        #block-b { background-color: #4444ff; }
+    </style>
+</head>
+<body>
 
+    <h1>QRGB</h1>
+
+    <div class="input-group">
+        <input type="text" id="input-r" placeholder="Текст для Red" oninput="update(this, 'block-r')">
+        <input type="text" id="input-g" placeholder="Текст для Green" oninput="update(this, 'block-g')">
+        <input type="text" id="input-b" placeholder="Текст для Blue" oninput="update(this, 'block-b')">
+    </div>
+
+    <div class="display-container">
+        <div id="block-r" class="block"></div>
+        <div id="block-g" class="block"></div>
+        <div id="block-b" class="block"></div>
+    </div>
+
+    <script>
+        function update(input, blockId) {
+            document.getElementById(blockId).textContent = input.value;
+        }
+    </script>
+
+</body>
+</html>
