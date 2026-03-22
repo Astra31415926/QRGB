@@ -1,314 +1,309 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QRGB - Pop Surrealism Edition</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>▣ QRGB Ultra</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     
     <style>
-        :root {
-            --neon-r: #ff0044;
-            --neon-g: #00ff66;
-            --neon-b: #0066ff;
-            --canvas-bg: #111;
+        :root { 
+            --red: #ff004d; --green: #00ff41; --blue: #0088ff;
+            --bg: #000; --card: #111; --surface: #0a0a0a;
         }
-
-        body {
-            background-color: #000;
-            color: #fff;
-            font-family: 'Segoe UI', Roboto, sans-serif;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            overflow-x: hidden;
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            background: var(--bg); color: #e5e5e5; 
         }
-
-        /* Контейнер приложения */
-        .app-container {
-            width: 100%;
-            max-width: 400px;
-            padding: 20px;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
+        canvas { image-rendering: pixelated; }
+        textarea { 
+            font-size: 16px; resize: none; min-height: 56px; 
+            background: var(--surface); border: 1px solid #333;
         }
-
-        h1 {
-            text-align: center;
-            font-size: 1.5rem;
-            letter-spacing: 5px;
-            text-transform: uppercase;
-            margin: 10px 0;
-            color: #fff;
-            text-shadow: 0 0 10px var(--neon-b);
+        .scan-line { 
+            position:absolute; left:0; right:0; height:3px; 
+            background:linear-gradient(90deg,transparent,var(--green),transparent); 
+            box-shadow:0 0 20px var(--green); 
+            animation:scanLine 2.5s linear forwards; 
         }
-
-        /* ВЕРХНЯЯ ЗОНА: Display & QR */
-        .art-frame {
-            border: 8px solid #222;
-            border-image: linear-gradient(45deg, #333, #111, #444) 1;
-            padding: 15px;
-            background: #050505;
-            box-shadow: 0 0 30px rgba(0,0,0,1), inset 0 0 20px #000;
-            position: relative;
-        }
-
-        /* Цветные блоки как мазки мастихином */
-        .display-stack {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        .paint-stroke {
-            height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 900;
-            border-radius: 4px;
-            position: relative;
-            overflow: hidden;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            transition: all 0.3s ease;
-        }
-
-        /* Эффект масляных мазков через градиенты и наложения */
-        #block-r { 
-            background: linear-gradient(110deg, #8b0000 0%, #ff0044 50%, #ff6688 100%); 
-            box-shadow: inset 0 0 15px rgba(0,0,0,0.5), 0 0 10px rgba(255,0,68,0.3);
-        }
-        #block-g { 
-            background: linear-gradient(110deg, #004411 0%, #00ff66 50%, #aaffcc 100%); 
-            color: #000; text-shadow: none; 
-            box-shadow: inset 0 0 15px rgba(0,0,0,0.3), 0 0 10px rgba(0,255,102,0.3);
-        }
-        #block-b { 
-            background: linear-gradient(110deg, #001144 0%, #0066ff 50%, #66aaff 100%); 
-            box-shadow: inset 0 0 15px rgba(0,0,0,0.5), 0 0 10px rgba(0,102,255,0.3);
-        }
-
-        /* Текстура холста поверх блоков */
-        .paint-stroke::after {
-            content: "";
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-image: url('https://www.transparenttextures.com/patterns/canvas-orange.png');
-            opacity: 0.2;
-            pointer-events: none;
-        }
-
-        /* QR-Код в раме */
-        .qr-wrap {
-            display: flex;
-            justify-content: center;
-            padding: 10px;
-            background: #fff;
-            border-radius: 2px;
-            margin: 0 auto;
-            width: 160px;
-            box-shadow: 0 0 15px rgba(255,255,255,0.1);
-        }
-
-        /* СРЕДНЯЯ ЗОНА: Ввод */
-        .input-stack {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        input {
-            background: #111;
-            border: 1px solid #333;
-            padding: 15px;
-            border-radius: 5px;
-            color: #fff;
-            outline: none;
-            transition: 0.4s;
-            font-size: 1rem;
-        }
-
-        input#input-r:focus { border-color: var(--neon-r); box-shadow: 0 0 10px var(--neon-r); }
-        input#input-g:focus { border-color: var(--neon-g); box-shadow: 0 0 10px var(--neon-g); }
-        input#input-b:focus { border-color: var(--neon-b); box-shadow: 0 0 10px var(--neon-b); }
-
-        /* НИЖНЯЯ ЗОНА: Сканер-Глаз */
-        .scanner-zone {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-top: 10px;
-        }
-
-        .eye-button-wrap {
-            position: relative;
-            width: 80px;
-            height: 80px;
-            cursor: pointer;
-        }
-
-        .eye-outer {
-            width: 100%;
-            height: 100%;
-            background: #222;
-            border-radius: 50% 0%;
-            transform: rotate(45deg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid #444;
-            overflow: hidden;
-            animation: pulse-eye 4s infinite ease-in-out;
-        }
-
-        .eye-iris {
-            width: 30px;
-            height: 30px;
-            background: radial-gradient(circle, #00ff66, #004411);
-            border-radius: 50%;
-            transform: rotate(-45deg);
-            border: 4px solid #000;
-            position: relative;
-        }
-
-        .eye-iris::after {
-            content: "";
-            position: absolute;
-            top: 5px; left: 5px;
-            width: 8px; height: 8px;
-            background: #fff;
-            border-radius: 50%;
-        }
-
-        #upload {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            opacity: 0;
-            cursor: pointer;
-            z-index: 10;
-        }
-
-        .upload-label {
-            margin-top: 10px;
-            font-size: 0.7rem;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        @keyframes pulse-eye {
-            0%, 100% { transform: rotate(45deg) scale(1); box-shadow: 0 0 5px var(--neon-g); }
-            50% { transform: rotate(45deg) scale(1.05); box-shadow: 0 0 20px var(--neon-g); }
-        }
-
+        @keyframes scanLine { 0%{top:0%;opacity:1} 100%{top:100%;opacity:0} }
+        @keyframes glitch { 0%,100%{transform:scale(1)} 20%{transform:scale(1.02)} 40%{transform:scale(0.98)} }
+        .glitch-effect { animation:glitch .6s; }
+        .flash-effect { animation:flash .3s; }
+        @keyframes flash { 0%,100%{opacity:0} 50%{opacity:.7} }
     </style>
 </head>
-<body>
+<body class="min-h-screen flex flex-col">
 
-    <div class="app-container">
-        <h1>QRGB</h1>
+    <!-- Header -->
+    <header class="fixed top-0 z-50 bg-black/95 backdrop-blur h-16 flex items-center px-4">
+        <canvas id="mini-qr" class="w-14 h-14 bg-gray-900 rounded-lg mr-4"></canvas>
+        <h1 class="flex-1 font-bold text-xl text-white text-center">▣ QRGB Ultra</h1>
+        <button onclick="openInfo('howto')" class="p-3 rounded-xl hover:bg-white/10">
+            <svg fill="none" stroke="currentColor" class="w-6 h-6 text-gray-400" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+        </button>
+    </header>
 
-        <div class="art-frame">
-            <div class="display-stack">
-                <div id="block-r" class="paint-stroke"></div>
-                <div id="block-g" class="paint-stroke"></div>
-                <div id="block-b" class="paint-stroke"></div>
+    <!-- Generation Tab (default) -->
+    <div id="generate" class="flex-1 pt-20 pb-28 px-6 flex flex-col">
+        <!-- Inputs - scrollable -->
+        <div id="input-zone" class="space-y-4 mb-8 max-h-[50vh] overflow-auto pb-20">
+            <div class="relative">
+                <div class="absolute left-3 top-4 w-2 h-12 bg-gradient-to-b from-red-500 to-pink-500 rounded-full"></div>
+                <textarea id="r-text" class="w-full p-4 pl-12 rounded-2xl border border-gray-600 focus:border-red-500 focus:ring-2 focus:ring-red-400/50 text-white placeholder-gray-400" placeholder="🔴 Red канал..."></textarea>
             </div>
-
-            <div class="qr-wrap">
-                <div id="qrcode"></div>
+            <div class="relative">
+                <div class="absolute left-3 top-4 w-2 h-12 bg-gradient-to-b from-green-500 to-emerald-500 rounded-full"></div>
+                <textarea id="g-text" class="w-full p-4 pl-12 rounded-2xl border border-gray-600 focus:border-green-500 focus:ring-2 focus:ring-green-400/50 text-white placeholder-gray-400" placeholder="🟢 Green канал..."></textarea>
+            </div>
+            <div class="relative">
+                <div class="absolute left-3 top-4 w-2 h-12 bg-gradient-to-b from-blue-500 to-sky-500 rounded-full"></div>
+                <textarea id="b-text" class="w-full p-4 pl-12 rounded-2xl border border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-400/50 text-white placeholder-gray-400" placeholder="🔵 Blue канал..."></textarea>
             </div>
         </div>
 
-        <div class="input-stack">
-            <input type="text" id="input-r" placeholder="Red Channel" oninput="generate()">
-            <input type="text" id="input-g" placeholder="Green Channel" oninput="generate()">
-            <input type="text" id="input-b" placeholder="Blue Channel" oninput="generate()">
+        <!-- QR Preview -->
+        <div class="flex-1 flex items-center justify-center mb-8 max-h-96">
+            <div id="qr-frame" class="w-72 h-72 bg-white rounded-3xl shadow-2xl p-4 relative">
+                <div id="qr-empty" class="absolute inset-0 flex items-center justify-center text-gray-500 text-sm font-medium rounded-3xl bg-gradient-to-br from-gray-900/50 to-black/50">Введіть текст</div>
+                <canvas id="qr-main" class="w-full h-full rounded-2xl opacity-0"></canvas>
+            </div>
         </div>
 
-        <div class="scanner-zone">
-            <div class="eye-button-wrap">
-                <input type="file" id="upload" accept="image/*">
-                <div class="eye-outer">
-                    <div class="eye-iris"></div>
-                </div>
+        <button id="save-btn" onclick="saveQR()" class="w-full py-4 bg-white text-black font-bold rounded-2xl text-lg tracking-wider shadow-2xl hover:shadow-white/20 active:scale-[0.98] transition-all hidden">
+            📱 Скачати PNG
+        </button>
+    </div>
+
+    <!-- Scanner Tab -->
+    <div id="scanner" class="flex-1 pt-20 pb-28 px-6 flex flex-col hidden">
+        <div class="relative w-full max-w-sm aspect-square mx-auto bg-gray-900 rounded-3xl border-4 border-gray-700 mb-8 overflow-hidden shadow-2xl">
+            <video id="camera" class="absolute inset-0 object-cover hidden" playsinline></video>
+            <canvas id="scan-view" class="absolute inset-0 object-contain hidden"></canvas>
+            <div id="scan-frame" class="absolute inset-4 border-4 border-green-400/50 rounded-2xl hidden">
+                <div id="scan-line" class="scan-line hidden"></div>
             </div>
-            <div class="upload-label">Scan Vision</div>
+            <div id="flash-layer" class="absolute inset-0 bg-green-400 opacity-0"></div>
+            
+            <!-- Controls -->
+            <div id="scan-start" class="absolute inset-0 flex flex-col items-center justify-center space-y-6">
+                <button onclick="startCamera()" class="w-28 h-28 bg-gradient-to-r from-green-500 to-emerald-500 rounded-3xl flex flex-col items-center justify-center text-black font-bold shadow-2xl hover:scale-105">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-4.064 7-8.542 7-4.477 0-7.268-2.943-8.542-7z"/></svg>
+                    <span class="text-xs mt-1">Камера</span>
+                </button>
+                <button onclick="document.getElementById('file-pick').click()" class="w-28 h-28 bg-gradient-to-r from-blue-500 to-sky-500 rounded-3xl flex flex-col items-center justify-center text-black font-bold shadow-2xl hover:scale-105">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01"/></svg>
+                    <span class="text-xs mt-1">Файл</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="space-y-4 text-sm">
+            <div id="res-r" class="p-4 bg-gray-900 rounded-2xl border-l-4 border-red-500 cursor-pointer hover:bg-gray-800 transition-all">🔴 Red: <span>Очікування...</span></div>
+            <div id="res-g" class="p-4 bg-gray-900 rounded-2xl border-l-4 border-green-500 cursor-pointer hover:bg-gray-800 transition-all">🟢 Green: <span>Очікування...</span></div>
+            <div id="res-b" class="p-4 bg-gray-900 rounded-2xl border-l-4 border-blue-500 cursor-pointer hover:bg-gray-800 transition-all">🔵 Blue: <span>Очікування...</span></div>
         </div>
     </div>
 
+    <!-- Info Modal -->
+    <div id="info-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur flex items-center justify-center p-6">
+        <div id="info-content" class="bg-gray-900 w-full max-w-md max-h-[80vh] rounded-3xl border border-gray-700 p-8 overflow-auto text-sm leading-relaxed"></div>
+    </div>
+
+    <input type="file" id="file-pick" accept="image/*" class="hidden">
+
     <script>
-        // Инициализация QR
-        const qrcode = new QRCode(document.getElementById("qrcode"), {
-            width: 160,
-            height: 160,
-            colorDark: "#000000",
-            colorLight: "#ffffff",
-            correctLevel: QRCode.CorrectLevel.H
-        });
+        // State
+        let qrData = null, stream = null, scanning = false;
+        const els = {
+            inputs: {r:document.getElementById('r-text'), g:document.getElementById('g-text'), b:document.getElementById('b-text')},
+            canvas: {main:document.getElementById('qr-main'), mini:document.getElementById('mini-qr')},
+            results: {r:document.getElementById('res-r'), g:document.getElementById('res-g'), b:document.getElementById('res-b')}
+        };
 
-        // Логика генерации
-        function generate() {
-            const r = document.getElementById('input-r').value;
-            const g = document.getElementById('input-g').value;
-            const b = document.getElementById('input-b').value;
-
-            document.getElementById('block-r').textContent = r;
-            document.getElementById('block-g').textContent = g;
-            document.getElementById('block-b').textContent = b;
-
-            const combinedText = `R:${r}|G:${g}|B:${b}`;
-            qrcode.makeCode(combinedText);
-        }
-
-        // Логика сканирования
-        document.getElementById('upload').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const img = new Image();
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    ctx.drawImage(img, 0, 0);
-                    
-                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    const code = jsQR(imageData.data, imageData.width, imageData.height);
-                    
-                    if (code) {
-                        parseRGBData(code.data);
-                    } else {
-                        alert("QR-код не найден на изображении");
-                    }
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        });
-
-        function parseRGBData(data) {
-            const parts = data.split('|');
-            parts.forEach(part => {
-                if (part.startsWith('R:')) document.getElementById('input-r').value = part.substring(2);
-                if (part.startsWith('G:')) document.getElementById('input-g').value = part.substring(2);
-                if (part.startsWith('B:')) document.getElementById('input-b').value = part.substring(2);
+        // Auto-generate QR on input
+        Object.values(els.inputs).forEach(input => {
+            input.addEventListener('input', () => {
+                input.style.height = 'auto'; input.style.height = input.scrollHeight + 'px';
+                generateQR();
             });
-            generate(); // Обновляем блоки и QR
+        });
+
+        function generateQR() {
+            const texts = Object.values(els.inputs).map(i => i.value || ' ');
+            if (!texts.some(t => t.trim())) return hideQR();
+            
+            let maxVer = 0;
+            texts.forEach(text => {
+                const qr = qrcode(0, 'M'); qr.addData(text); qr.make();
+                maxVer = Math.max(maxVer, Math.floor((qr.getModuleCount()-17)/4));
+            });
+
+            const qrs = texts.map((text,i) => {
+                const qr = qrcode(maxVer, 'M'); qr.addData(text); qr.make(); return qr;
+            });
+
+            renderQR(qrs, els.canvas.main, 256);
+            renderQR(qrs, els.canvas.mini, 56);
+            showQR();
+            qrData = qrs;
         }
 
-        // Первый запуск
-        generate();
+        function renderQR(qrs, canvas, size) {
+            const modCount = qrs[0].getModuleCount();
+            const modSize = size / modCount;
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.height = size;
+            
+            ctx.fillStyle = '#fff'; ctx.fillRect(0,0,size,size);
+            
+            for(let y=0; y<modCount; y++) for(let x=0; x<modCount; x++) {
+                const r = qrs[0].isDark(y,x) ? 255 : 255, g = qrs[1].isDark(y,x) ? 255 : 255, b = qrs[2].isDark(y,x) ? 255 : 255;
+                ctx.fillStyle = `rgb(${r},${g},${b})`;
+                ctx.fillRect(x*modSize, y*modSize, modSize, modSize);
+            }
+        }
+
+        function showQR() {
+            document.getElementById('save-btn').classList.remove('hidden');
+            document.getElementById('qr-main').style.opacity = '1';
+            document.getElementById('qr-empty').style.opacity = '0';
+        }
+        function hideQR() {
+            document.getElementById('save-btn').classList.add('hidden');
+            document.getElementById('qr-main').style.opacity = '0';
+            document.getElementById('qr-empty').style.opacity = '1';
+        }
+
+        function saveQR() {
+            const link = document.createElement('a');
+            link.download = 'QRGB.png';
+            link.href = els.canvas.main.toDataURL('image/png');
+            link.click();
+        }
+
+        // Scanner
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}});
+                document.getElementById('camera').srcObject = stream;
+                document.getElementById('camera').classList.remove('hidden');
+                document.getElementById('scan-start').classList.add('hidden');
+                document.getElementById('scan-frame').classList.remove('hidden');
+                scanLoop();
+            } catch(e) { alert('Камера недоступна'); }
+        }
+
+        function scanLoop() {
+            if (!scanning) return;
+            const video = document.getElementById('camera');
+            const canvas = document.getElementById('scan-view');
+            const ctx = canvas.getContext('2d');
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+            
+            const imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+            const results = decodeChannels(imageData);
+            
+            // ✅ ТІЛЬКИ коли ВСІ 3 канали прочитані АБО є дані + ∅
+            const hasValidScan = results.r && results.g && results.b;
+            if (hasValidScan) {
+                successScan(results);
+                return;
+            }
+            
+            requestAnimationFrame(scanLoop);
+        }
+
+        function decodeChannels(imageData) {
+            const {width: w, height: h, data} = imageData;
+            const channels = ['r','g','b'].map((ch,i) => {
+                const chData = new Uint8ClampedArray(w*h*4);
+                for(let p=0; p<data.length; p+=4) {
+                    const idx = (p/4)*4;
+                    chData[idx] = chData[idx+1] = chData[idx+2] = data[idx+i];
+                    chData[idx+3] = 255;
+                }
+                const qr = jsQR(chData, w, h);
+                return qr ? qr.data : null;
+            });
+            return {r: channels[0], g: channels[1], b: channels[2]};
+        }
+
+        function successScan(results) {
+            scanning = false;
+            stream.getTracks().forEach(t => t.stop());
+            
+            // Flash + звук
+            document.getElementById('flash-layer').classList.add('flash-effect');
+            playSound();
+            
+            // Показати результати
+            Object.entries(results).forEach(([ch,data]) => {
+                const el = els.results[ch];
+                el.querySelector('span').textContent = data || '∅';
+                el.onclick = () => navigator.clipboard.writeText(data || '');
+            });
+        }
+
+        function playSound() {
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator(); osc.frequency.value = 800;
+            const gain = ctx.createGain(); gain.gain.setValueAtTime(.2,ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(.01, ctx.currentTime + .1);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(); osc.stop(ctx.currentTime + .1);
+        }
+
+        document.getElementById('file-pick').onchange = (e) => {
+            const file = e.target.files[0];
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.getElementById('scan-view');
+                const ctx = canvas.getContext('2d');
+                const scale = Math.min(400/img.width, 400/img.height);
+                canvas.width = img.width*scale; canvas.height = img.height*scale;
+                ctx.drawImage(img,0,0,canvas.width,canvas.height);
+                const results = decodeChannels(ctx.getImageData(0,0,canvas.width,canvas.height));
+                document.getElementById('scan-line').classList.remove('hidden');
+                setTimeout(() => successScan(results), 2500);
+            };
+            img.src = URL.createObjectURL(file);
+        };
+
+        // Info modals
+        const info = {
+            howto: `<h3 class="text-lg font-bold mb-4 text-white">📝 Як користуватися сайтом</h3>
+<p>На цьому сайті ви можете:<br>
+• створювати кольорові (спектральні) 2D-коди<br>
+• тестувати їх зчитування з екрана</p>`,
+            tech: `<h3 class="text-lg font-bold mb-4 text-white">⚙️ Технологія</h3>
+<p>Класичний QR-код розробив Масахіро Хара (Denso Wave, 1994).<br>
+Цей проєкт демонструє спектральний розподіл по RGB-каналах.</p>`,
+            author: `<h3 class="text-lg font-bold mb-4 text-white">🎨 Автор</h3>
+<p><strong>Михайло Кашкаров</strong> — сайнс-арт художник.<br>
+📚 <a href="https://zenodo.org/records/18895764" class="text-blue-400">Zenodo</a><br>
+📩 <a href="mailto:bakminsterfuler@gmail.com" class="text-green-400">Email</a><br>
+🌐 <a href="https://astra31415926.github.io/" class="text-red-400">Сайт</a></p>`
+        };
+        function openInfo(key) {
+            document.getElementById('info-content').innerHTML = info[key];
+            document.getElementById('info-modal').classList.remove('hidden');
+        }
+        document.getElementById('info-modal').onclick = (e) => e.target.id=='info-modal' && (document.getElementById('info-modal').classList.add('hidden'));
+
+        // Hide keyboard on tap outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('textarea')) document.activeElement.blur();
+        });
     </script>
 </body>
 </html>
