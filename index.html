@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#000000">
-    <title>▣ QRGB Ultra - Final</title>
+    <title>▣ QRGB Ultra - Fixed Grid</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
@@ -37,32 +37,31 @@
     </header>
 
     <main class="flex-1 pt-20 pb-28 px-6 flex flex-col max-w-md mx-auto w-full">
-        
         <div class="space-y-4 mb-6">
             <div class="relative">
                 <div class="absolute left-3 top-4 w-1.5 h-10 bg-[#ff004d] rounded-full"></div>
-                <textarea id="r-text" class="w-full p-4 pl-10 rounded-2xl focus:border-[#ff004d] outline-none transition-all" placeholder="Текст для Red..."></textarea>
+                <textarea id="r-text" class="w-full p-4 pl-10 rounded-2xl outline-none" placeholder="Red..."></textarea>
             </div>
             <div class="relative">
                 <div class="absolute left-3 top-4 w-1.5 h-10 bg-[#00ff41] rounded-full"></div>
-                <textarea id="g-text" class="w-full p-4 pl-10 rounded-2xl focus:border-[#00ff41] outline-none transition-all" placeholder="Текст для Green..."></textarea>
+                <textarea id="g-text" class="w-full p-4 pl-10 rounded-2xl outline-none" placeholder="Green..."></textarea>
             </div>
             <div class="relative">
                 <div class="absolute left-3 top-4 w-1.5 h-10 bg-[#0088ff] rounded-full"></div>
-                <textarea id="b-text" class="w-full p-4 pl-10 rounded-2xl focus:border-[#0088ff] outline-none transition-all" placeholder="Текст для Blue..."></textarea>
+                <textarea id="b-text" class="w-full p-4 pl-10 rounded-2xl outline-none" placeholder="Blue..."></textarea>
             </div>
         </div>
 
         <div class="flex-1 flex items-center justify-center min-h-[300px]">
             <div class="w-72 h-72 bg-white rounded-3xl shadow-2xl p-4 relative overflow-hidden">
-                <div id="qr-empty" class="absolute inset-0 flex items-center justify-center text-gray-400 text-xs text-center p-8 bg-gray-900/50">Введіть текст для генерації RGB-коду</div>
+                <div id="qr-empty" class="absolute inset-0 flex items-center justify-center text-gray-400 text-xs text-center p-8 bg-gray-900/50">Введіть текст</div>
                 <canvas id="qr-main" width="256" height="256" class="w-full h-full rounded-lg opacity-0 transition-opacity"></canvas>
             </div>
         </div>
 
         <div class="mt-6 space-y-3">
-            <button id="save-btn" onclick="saveQR()" class="w-full py-4 bg-white text-black font-bold rounded-2xl hidden">📱 Зберегти PNG</button>
-            <button onclick="toggleScanner()" class="w-full py-4 bg-zinc-800 text-white font-bold rounded-2xl border border-white/10">🔍 Сканувати / Камера</button>
+            <button id="save-btn" onclick="saveQR()" class="w-full py-4 bg-white text-black font-bold rounded-2xl hidden shadow-lg">📱 Зберегти PNG</button>
+            <button onclick="toggleScanner()" class="w-full py-4 bg-zinc-800 text-white font-bold rounded-2xl border border-white/10">🔍 Камера / Сканер</button>
         </div>
     </main>
 
@@ -90,27 +89,47 @@
             video: document.getElementById('video')
         };
 
+        // Загрузка сохраненного текста
+        window.onload = () => {
+            ['r','g','b'].forEach(ch => {
+                const saved = localStorage.getItem('qrgb_' + ch);
+                if (saved) { els[ch].value = saved; }
+            });
+            generateQR();
+        };
+
         function generateQR() {
             const texts = [els.r.value, els.g.value, els.b.value];
+            
+            // Сохраняем в память браузера
+            texts.forEach((t, i) => localStorage.setItem('qrgb_' + ['r','g','b'][i], t));
+
             if (!texts.some(t => t.trim())) {
-                document.getElementById('qr-main').style.opacity = 0;
+                els.main.style.opacity = 0;
                 document.getElementById('qr-empty').style.opacity = 1;
                 document.getElementById('save-btn').classList.add('hidden');
                 return;
             }
 
+            // --- Синхронизация версий ---
+            let maxVer = 1;
+            texts.forEach(text => {
+                if(!text.trim()) return;
+                const tmp = qrcode(0, 'M');
+                tmp.addData(text);
+                tmp.make();
+                const ver = Math.floor((tmp.getModuleCount() - 17) / 4);
+                if (ver > maxVer) maxVer = ver;
+            });
+
             const size = 256;
             const ctx = els.main.getContext('2d');
-            ctx.clearRect(0,0,size,size);
             ctx.fillStyle = "#fff";
             ctx.fillRect(0,0,size,size);
-
-            // Режим наложения для RGB
             ctx.globalCompositeOperation = "multiply";
 
             texts.forEach((text, i) => {
-                if(!text.trim()) return;
-                const qr = qrcode(0, 'M');
+                const qr = qrcode(maxVer, 'M'); // Всегда одна и та же версия для всех
                 qr.addData(text || " ");
                 qr.make();
                 const count = qr.getModuleCount();
@@ -132,7 +151,6 @@
             document.getElementById('qr-empty').style.opacity = 0;
             document.getElementById('save-btn').classList.remove('hidden');
             
-            // Обновить миниатюру
             const mCtx = els.mini.getContext('2d');
             mCtx.fillStyle = "#000"; mCtx.fillRect(0,0,56,56);
             mCtx.drawImage(els.main, 0, 0, 56, 56);
@@ -142,12 +160,11 @@
 
         function saveQR() {
             const a = document.createElement('a');
-            a.download = 'qrgb_ultra.png';
+            a.download = 'qrgb_sync.png';
             a.href = els.main.toDataURL();
             a.click();
         }
 
-        // --- SCANNER LOGIC ---
         let scanning = false;
         async function toggleScanner() {
             const ui = document.getElementById('scanner-ui');
@@ -171,18 +188,15 @@
             if (!scanning) return;
             if (els.video.readyState === els.video.HAVE_ENOUGH_DATA) {
                 const canvas = document.createElement('canvas');
-                canvas.width = els.video.videoWidth;
-                canvas.height = els.video.videoHeight;
+                canvas.width = els.video.videoWidth; canvas.height = els.video.videoHeight;
                 const ctx = canvas.getContext('2d');
-                ctx.drawImage(els.video, 0, 0, canvas.width, canvas.height);
+                ctx.drawImage(els.video, 0, 0);
                 const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-                const channels = [0, 1, 2]; // R, G, B
-                channels.forEach(idx => {
+                [0, 1, 2].forEach(idx => {
                     const monoData = new Uint8ClampedArray(imgData.data.length);
                     for (let i = 0; i < imgData.data.length; i += 4) {
                         const v = imgData.data[i + idx];
-                        // Порог яркости для выделения канала
                         const b = v < 120 ? 0 : 255; 
                         monoData[i] = monoData[i+1] = monoData[i+2] = b;
                         monoData[i+3] = 255;
@@ -191,7 +205,6 @@
                     if (code) {
                         const resEl = document.getElementById(['res-r','res-g','res-b'][idx]);
                         resEl.querySelector('span').textContent = code.data;
-                        resEl.classList.add('bg-white/20');
                         document.getElementById('flash-layer').classList.add('flash');
                         setTimeout(() => document.getElementById('flash-layer').classList.remove('flash'), 300);
                     }
