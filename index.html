@@ -5,38 +5,149 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QRGB</title>
     <style>
-        body { background-color: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
-        h1 { margin-bottom: 20px; }
-        .input-group { width: 100%; max-width: 400px; margin-bottom: 20px; }
-        input { width: 100%; padding: 12px; margin: 5px 0; border-radius: 8px; border: 1px solid #444; background: #222; color: #fff; box-sizing: border-box; }
-        .display-container { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 10px; }
-        .block { height: 100px; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 12px; text-shadow: 1px 1px 2px #000; font-size: 1.2rem; }
-        #block-r { background-color: #ff4444; }
-        #block-g { background-color: #44ff44; color: #000; text-shadow: none; }
-        #block-b { background-color: #4444ff; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            padding: 24px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #fff;
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        input {
+            background: #111;
+            border: 1px solid #333;
+            color: #fff;
+            font-size: 18px;
+            padding: 14px 16px;
+            border-radius: 8px;
+            outline: none;
+            width: 100%;
+        }
+
+        input::placeholder {
+            color: #666;
+        }
+
+        input:focus {
+            border-color: #555;
+        }
+
+        .colors {
+            display: flex;
+            gap: 12px;
+        }
+
+        .color-block {
+            flex: 1;
+            height: 80px;
+            border-radius: 8px;
+        }
+
+        .color-block.red { background: #ff0000; }
+        .color-block.green { background: #00ff00; }
+        .color-block.blue { background: #0000ff; }
     </style>
 </head>
 <body>
+    <div class="container">
+        <h1>QRGB</h1>
+        
+        <div class="inputs">
+            <input type="text" placeholder="R">
+            <input type="text" placeholder="G">
+            <input type="text" placeholder="B">
+        </div>
 
-    <h1>QRGB</h1>
+        <div class="colors">
+            <div class="color-block red"></div>
+            <div class="color-block green"></div>
+            <div class="color-block blue"></div>
+        </div>
 
-    <div class="input-group">
-        <input type="text" id="input-r" placeholder="Текст для Red" oninput="update(this, 'block-r')">
-        <input type="text" id="input-g" placeholder="Текст для Green" oninput="update(this, 'block-g')">
-        <input type="text" id="input-b" placeholder="Текст для Blue" oninput="update(this, 'block-b')">
+        <div id="qr-container"></div>
     </div>
 
-    <div class="display-container">
-        <div id="block-r" class="block"></div>
-        <div id="block-g" class="block"></div>
-        <div id="block-b" class="block"></div>
-    </div>
-
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script>
-        function update(input, blockId) {
-            document.getElementById(blockId).textContent = input.value;
-        }
-    </script>
+        const inputs = document.querySelectorAll('.inputs input');
+        const blocks = document.querySelectorAll('.color-block');
 
+        // Стили для цветных блоков
+        blocks.forEach(block => {
+            block.style.display = 'flex';
+            block.style.alignItems = 'center';
+            block.style.justifyContent = 'center';
+            block.style.fontWeight = '600';
+            block.style.color = '#000';
+        });
+
+        // Контейнер для QR-кода
+        const qrContainer = document.getElementById('qr-container');
+        qrContainer.style.marginTop = '24px';
+        qrContainer.style.display = 'flex';
+        qrContainer.style.justifyContent = 'center';
+        qrContainer.style.padding = '16px';
+        qrContainer.style.background = '#111';
+        qrContainer.style.borderRadius = '8px';
+
+        // Canvas для QR-кода
+        const qrCanvas = document.createElement('canvas');
+        qrContainer.appendChild(qrCanvas);
+
+        // Функция генерации QR-кода
+        function generateQR() {
+            const text = inputs[0].value + inputs[1].value + inputs[2].value;
+            
+            if (text.trim()) {
+                QRCode.toCanvas(qrCanvas, text, {
+                    width: 200,
+                    margin: 2,
+                    color: {
+                        dark: '#ffffff',
+                        light: '#111111'
+                    }
+                }, function(error) {
+                    if (error) console.error(error);
+                });
+                qrCanvas.style.display = 'block';
+            } else {
+                qrCanvas.style.display = 'none';
+            }
+        }
+
+        // Обработчики ввода
+        inputs.forEach((input, index) => {
+            input.addEventListener('input', () => {
+                blocks[index].textContent = input.value;
+                generateQR();
+            });
+        });
+    </script>
 </body>
 </html>
