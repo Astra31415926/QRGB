@@ -26,7 +26,7 @@ This project sits at the intersection of **Science-Art** and Optical Physics. It
 - [Zenodo: Spectral Integrity Research](https://zenodo.org/records/18895764)
 - [Medium: SCI Universal Model & Normalization](https://medium.com/@Bakminsterfuler/sci-universal-model-905efe92e766)
 - [Telegra.ph: White Paper (UA Language)](https://telegra.ph/White-Paper-SCI-Encoding-02-22)
-
+[Download my vCard](contact.vcf)
 ---
 
 ### 🛠 Local Installation
