@@ -23,10 +23,11 @@ This website is designed as an **interactive experimental sandbox** for testing 
 This project sits at the intersection of **Science-Art** and Optical Physics. It was born from the author's practice in **photosensitive painting** and the search for turning physical spectral responses into stable data carriers.
 
 ### 📚 Publications & Research
-- [Zenodo: Spectral Integrity Research](https://zenodo.org/records/18895764)
-- [Medium: SCI Universal Model & Normalization](https://medium.com/@Bakminsterfuler/sci-universal-model-905efe92e766)
-- [Telegra.ph: White Paper (UA Language)](https://telegra.ph/White-Paper-SCI-Encoding-02-22)
-[Download my vCard](contact.vcf)
+
+* [Zenodo: Spectral Integrity Research](https://zenodo.org/...)
+* [Medium: SCI Universal Model & Normalization](https://medium.com/...)
+* [Telegra.ph: White Paper (UA Language)](https://telegra.ph/...)
+* [📇 Download my vCard](vcard.vcf)
 ---
 
 ### 🛠 Local Installation
