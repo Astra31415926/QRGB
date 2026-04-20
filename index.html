@@ -1,221 +1,461 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link rel="manifest" href="./manifest.json">
-    <meta name="theme-color" content="#050505">
-    <link rel="apple-touch-icon" href="./icon-192.png">
-    <link rel="icon" type="image/png" href="./icon-192.png">
-    <title>RGB-11: SCI Multi-Layer QR Encoder</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <title>RGB-11: SCI Scanner</title>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap" rel="stylesheet">
     <style>
-        :root { --r-color: #FF004D; --g-color: #00FF41; --b-color: #0088FF; --bg-color: #050505; }
-        body { background: var(--bg-color); color: #fff; font-family: 'Inter', sans-serif; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
-        textarea { background: rgba(10, 10, 10, 0.6); border: 1px solid rgba(255,255,255,0.1); color: #fff; resize: none; transition: all 0.3s; }
-        .logo-r { color: var(--r-color); text-shadow: 0 0 10px var(--r-color); }
-        .logo-g { color: var(--g-color); text-shadow: 0 0 10px var(--g-color); }
-        .logo-b { color: var(--b-color); text-shadow: 0 0 10px var(--b-color); }
-        .scan-line { position: absolute; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--g-color), transparent); box-shadow: 0 0 15px var(--g-color); z-index: 20; animation: scanMove 2s infinite; }
-        @keyframes scanMove { 0% { top: 0%; } 100% { top: 100%; } }
-        .field-indicator { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 8px; height: 8px; border-radius: 50%; background: #333; transition: all 0.3s; z-index: 10; }
-        .active-r { background: var(--r-color); box-shadow: 0 0 12px var(--r-color); }
-        .active-g { background: var(--g-color); box-shadow: 0 0 12px var(--g-color); }
-        .active-b { background: var(--b-color); box-shadow: 0 0 12px var(--b-color); }
-        .viewfinder-corners { position: absolute; inset: 0; pointer-events: none; z-index: 15; }
-        .corner { position: absolute; width: 20px; height: 20px; border-color: rgba(255,255,255,0.5); }
-        .tl { top: 0; left: 0; border-top: 3px solid; border-left: 3px solid; border-radius: 8px 0 0 0; }
-        .tr { top: 0; right: 0; border-top: 3px solid; border-right: 3px solid; border-radius: 0 8px 0 0; }
-        .bl { bottom: 0; left: 0; border-bottom: 3px solid; border-left: 3px solid; border-radius: 0 0 0 8px; }
-        .br { bottom: 0; right: 0; border-bottom: 3px solid; border-right: 3px solid; border-radius: 0 0 8px 0; }
-        .targeting .corner { border-color: var(--g-color); box-shadow: 0 0 10px var(--g-color); }
-        .hidden-scan { display: none; }
+        :root {
+            --r-color: #FF004D; --g-color: #00FF41; --b-color: #0088FF; --bg-color: #050505;
+        }
+        body { background: var(--bg-color); color: #fff; font-family: 'Inter', sans-serif; margin: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 2px; }
+        ::-webkit-scrollbar-thumb { background: #333; }
+
+        /* Inputs with Integrated Indicators */
+        .input-wrapper { position: relative; margin-bottom: 12px; }
+        .input-wrapper textarea {
+            background: rgba(20, 20, 20, 0.9); border: 1px solid rgba(255,255,255,0.1); color: #fff;
+            resize: none; transition: all 0.3s; width: 100%; padding: 12px 16px; border-radius: 12px; font-size: 14px;
+        }
+        .input-wrapper textarea:focus { outline: none; border-color: rgba(255,255,255,0.3); }
+
+        /* Indicators inside inputs */
+        .input-wrapper .indicator {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            width: 10px; height: 10px; border-radius: 50%; background: #333; transition: all 0.2s; z-index: 10;
+        }
+        .input-wrapper .indicator.r { box-shadow: 0 0 0 rgba(255,0,77,0); }
+        .input-wrapper .indicator.r.active { background: var(--r-color); box-shadow: 0 0 12px var(--r-color); }
+        .input-wrapper .indicator.g { box-shadow: 0 0 0 rgba(0,255,65,0); }
+        .input-wrapper .indicator.g.active { background: var(--g-color); box-shadow: 0 0 12px var(--g-color); }
+        .input-wrapper .indicator.b { box-shadow: 0 0 0 rgba(0,136,255,0); }
+        .input-wrapper .indicator.b.active { background: var(--b-color); box-shadow: 0 0 12px var(--b-color); }
+
+        /* Main Canvas Container */
+        .canvas-container {
+            flex: 1; display: flex; justify-content: center; align-items: center; position: relative;
+            background: radial-gradient(circle at 50% 50%, #111, #000);
+        }
+        #qr-main { max-width: 100%; max-height: 100%; box-shadow: 0 0 30px rgba(0,0,0,0.8); }
+        #video { display: none; position: absolute; width: 100%; height: 100%; object-fit: cover; }
+        #freeze-frame { display: none; position: absolute; width: 100%; height: 100%; object-fit: contain; background: #000; }
+
+        /* Buttons Logic */
+        .btn-scan-main {
+            width: 100%; padding: 16px; background: #fff; color: #000; font-weight: 800;
+            border-radius: 16px; font-size: 18px; text-transform: uppercase; letter-spacing: 2px;
+            transition: all 0.3s ease; border: none;
+        }
+        .btn-scan-main.hidden { opacity: 0; transform: scale(0.8); height: 0; padding: 0; margin: 0; pointer-events: none; }
+        
+        .scan-options {
+            display: flex; gap: 12px; opacity: 0; height: 0; overflow: hidden; transition: all 0.3s ease;
+        }
+        .scan-options.show { opacity: 1; height: auto; margin-top: 12px; }
+        
+        .btn-action {
+            flex: 1; padding: 12px; background: #222; color: #fff; border: 1px solid #444;
+            border-radius: 12px; font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        .btn-action:active { background: #333; transform: scale(0.98); }
+
+        /* Generator Save Button */
+        .btn-save { 
+            width: 100%; padding: 12px; background: transparent; color: var(--g-color); 
+            border: 1px solid var(--g-color); border-radius: 12px; margin-top: 12px; font-weight: 600;
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .btn-save.show { opacity: 1; }
+
+        /* Flash Animation */
+        @keyframes flash { 0% { opacity: 0; } 20% { opacity: 0.8; } 100% { opacity: 0; } }
+        .flash { animation: flash 0.3s ease-out; position: absolute; inset: 0; background: #fff; pointer-events: none; z-index: 50; }
     </style>
 </head>
-<body class="p-4 pb-2">
-    <header class="flex items-center justify-between mb-2 flex-shrink-0">
-        <div class="flex items-center gap-2">
-            <canvas id="mini-qr" width="32" height="32" class="rounded bg-zinc-900 border border-white/10"></canvas>
-            <h1 class="text-xl font-black tracking-tighter">
-                <span class="text-white">Q</span><span class="logo-r">R</span><span class="logo-g">G</span><span class="logo-b">B</span>
-            </h1>
+<body class="p-4 flex flex-col">
+
+    <!-- Header -->
+    <header class="flex justify-between items-center mb-4">
+        <div>
+            <h1 class="text-xl font-black">RGB-11 <span class="text-zinc-500 text-xs font-mono block">SCI ENGINE</span></h1>
         </div>
-        <button id="close-cam-btn" onclick="globalReset()" class="hidden text-red-500 text-xs font-bold border border-red-500/30 px-3 py-1 rounded-full">CLOSE</button>
+        <button onclick="globalReset()" class="text-xs text-zinc-400 border border-zinc-700 px-3 py-1 rounded-full">RESET</button>
     </header>
 
-    <div id="input-fields" class="space-y-1.5 mb-3 flex-shrink-0">
-        <div class="relative"><div id="ind-r" class="field-indicator"></div><textarea id="r-text" class="w-full p-2 pl-3 pr-8 rounded-lg h-9 text-xs" placeholder="RED CHANNEL"></textarea></div>
-        <div class="relative"><div id="ind-g" class="field-indicator"></div><textarea id="g-text" class="w-full p-2 pl-3 pr-8 rounded-lg h-9 text-xs" placeholder="GREEN CHANNEL"></textarea></div>
-        <div class="relative"><div id="ind-b" class="field-indicator"></div><textarea id="b-text" class="w-full p-2 pl-3 pr-8 rounded-lg h-9 text-xs" placeholder="BLUE CHANNEL"></textarea></div>
-    </div>
-
-    <div class="flex-1 flex flex-col items-center justify-center relative min-h-0">
-        <div id="central-container" class="relative w-full max-w-xs aspect-square bg-zinc-950 rounded-2xl p-2 border border-white/5 overflow-hidden">
-            <canvas id="qr-main" width="512" height="512" class="w-full h-full"></canvas>
-            <video id="video" class="absolute inset-0 w-full h-full object-cover hidden" playsinline></video>
-            <canvas id="freeze-frame" class="absolute inset-0 w-full h-full object-cover hidden"></canvas>
-            <div class="viewfinder-corners hidden" id="viewfinder-ui">
-                <div class="scan-line"></div>
-                <div class="corner tl"></div><div class="corner tr"></div>
-                <div class="corner bl"></div><div class="corner br"></div>
-            </div>
+    <!-- Inputs / Outputs -->
+    <div class="input-section px-1">
+        <div class="input-wrapper">
+            <div class="indicator r" id="ind-r"></div>
+            <textarea id="r-text" rows="1" placeholder="RED CHANNEL"></textarea>
+        </div>
+        <div class="input-wrapper">
+            <div class="indicator g" id="ind-g"></div>
+            <textarea id="g-text" rows="1" placeholder="GREEN CHANNEL"></textarea>
+        </div>
+        <div class="input-wrapper">
+            <div class="indicator b" id="ind-b"></div>
+            <textarea id="b-text" rows="1" placeholder="BLUE CHANNEL"></textarea>
         </div>
     </div>
 
-    <div class="mt-4 flex flex-col items-center gap-2">
-        <button id="scan-btn-main" onclick="showActions()" class="w-full max-w-xs py-3 bg-zinc-800 text-white font-bold rounded-xl text-xs uppercase tracking-widest">SCAN QR</button>
-        <div id="action-group" class="hidden grid grid-cols-2 gap-2 w-full max-w-xs">
-            <button onclick="startCamera()" class="py-3 bg-red-600 text-white font-bold rounded-xl text-xs uppercase">Camera</button>
-            <button onclick="triggerFile()" class="py-3 bg-blue-600 text-white font-bold rounded-xl text-xs uppercase">Gallery</button>
-        </div>
-        <button id="save-btn" onclick="saveQR()" class="hidden w-full max-w-xs py-2 bg-white text-black font-bold rounded-xl text-xs uppercase">Save PNG</button>
+    <!-- Viewport -->
+    <div class="canvas-container my-4 rounded-2xl overflow-hidden border border-zinc-800">
+        <canvas id="qr-main" width="512" height="512"></canvas>
+        <video id="video" playsinline autoplay muted></video>
+        <canvas id="freeze-frame"></canvas>
+        <div id="flash-layer" class="flash" style="opacity:0"></div>
     </div>
 
-    <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleFile(event)">
+    <!-- Controls -->
+    <div class="controls-section mt-auto">
+        <!-- Main Scan Button -->
+        <button id="btn-scan-main" class="btn-scan-main" onclick="toggleScanUI()">SCAN</button>
 
-    <script>
-        const els = {
-            r: document.getElementById('r-text'), g: document.getElementById('g-text'), b: document.getElementById('b-text'),
-            main: document.getElementById('qr-main'), mini: document.getElementById('mini-qr'),
-            video: document.getElementById('video'), freeze: document.getElementById('freeze-frame'),
-            indR: document.getElementById('ind-r'), indG: document.getElementById('ind-g'), indB: document.getElementById('ind-b'),
-            vUI: document.getElementById('viewfinder-ui'), btnMain: document.getElementById('scan-btn-main'),
-            btnActions: document.getElementById('action-group'), closeBtn: document.getElementById('close-cam-btn')
-        };
+        <!-- Options (Hidden by default) -->
+        <div id="scan-options" class="scan-options">
+            <button class="btn-action" onclick="startCamera()">📷 Camera</button>
+            <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleFile(event)">
+            <button class="btn-action" onclick="document.getElementById('file-input').click()">🖼 Gallery</button>
+        </div>
 
-        let scanning = false;
-        let results = {r:null, g:null, b:null};
+        <!-- Generator Save Button -->
+        <button id="btn-save" class="btn-save" onclick="saveQR()">💾 SAVE RESULT</button>
+    </div>
 
-        function generateQR() {
-            const texts = [els.r.value, els.g.value, els.b.value];
-            const ctx = els.main.getContext('2d');
-            ctx.fillStyle = "#000"; ctx.fillRect(0,0,512,512);
-            ctx.globalCompositeOperation = "lighten";
+<script>
+    // === CORE STATE ===
+    const state = {
+        scanning: false,
+        locked: { r: false, g: false, b: false },
+        results: { r: null, g: null, b: null },
+        config: {
+            R: { offset: 0, gain: 1.0, k1: 0.10, k2: 0.20, neighbors: ['G', 'B'] },
+            G: { offset: 0, gain: 1.0, k1: 0.18, k2: 0.33, neighbors: ['R', 'B'] },
+            B: { offset: 0, gain: 1.0, k1: 0.05, k2: 0.13, neighbors: ['R', 'G'] }
+        },
+        time: 0 // For oscillators
+    };
+
+    const els = {
+        video: document.getElementById('video'),
+        canvas: document.getElementById('qr-main'),
+        ctx: document.getElementById('qr-main').getContext('2d', { willReadFrequently: true }),
+        freeze: document.getElementById('freeze-frame'),
+        fCtx: document.getElementById('freeze-frame').getContext('2d', { willReadFrequently: true }),
+        r: document.getElementById('r-text'), g: document.getElementById('g-text'), b: document.getElementById('b-text'),
+        indR: document.getElementById('ind-r'), indG: document.getElementById('ind-g'), indB: document.getElementById('ind-b'),
+        flash: document.getElementById('flash-layer'),
+        btnMain: document.getElementById('btn-scan-main'),
+        btnOpts: document.getElementById('scan-options'),
+        btnSave: document.getElementById('btn-save')
+    };
+
+    // === 1. UI LOGIC ===
+
+    function toggleScanUI() {
+        els.btnMain.classList.add('hidden');
+        els.btnOpts.classList.add('show');
+    }
+
+    function toggleMainUI() {
+        els.btnMain.classList.remove('hidden');
+        els.btnOpts.classList.remove('show');
+    }
+
+    function updateUIFromState() {
+        ['r', 'g', 'b'].forEach(ch => {
+            const el = els[ch];
+            const ind = els['ind' + ch.toUpperCase()];
+            const isLocked = state.locked[ch];
             
-            texts.forEach((text, i) => {
-                if(!text.trim()) return;
-                const qr = qrcode(0, 'M'); qr.addData(unescape(encodeURIComponent(text))); qr.make();
-                const mod = 512 / qr.getModuleCount();
-                ctx.fillStyle = i === 0 ? "#FF0000" : (i === 1 ? "#00FF00" : "#0000FF");
-                for (let r = 0; r < qr.getModuleCount(); r++)
-                    for (let c = 0; c < qr.getModuleCount(); c++)
-                        if (qr.isDark(r, c)) ctx.fillRect(c * mod, r * mod, mod, mod);
+            if (isLocked) {
+                ind.classList.add('active');
+                el.value = state.results[ch] || "";
+                el.style.borderColor = ch === 'r' ? '#FF004D' : (ch === 'g' ? '#00FF41' : '#0088FF');
+            } else {
+                // Keep text if user typed it, but visual state is unlocked
+                if (!state.results[ch]) ind.classList.remove('active');
+                el.style.borderColor = 'rgba(255,255,255,0.1)';
+            }
+        });
+
+        // Show save button if any result exists
+        if (state.results.r || state.results.g || state.results.b) {
+            els.btnSave.classList.add('show');
+            generateQR();
+        } else {
+            els.btnSave.classList.remove('show');
+        }
+    }
+
+    function playBeep() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.connect(g); g.connect(ctx.destination);
+            o.frequency.value = 880; o.type = "square";
+            g.gain.setValueAtTime(0.1, ctx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.1);
+            o.start(); o.stop(ctx.currentTime + 0.1);
+        } catch(e){}
+    }
+
+    function triggerFlash() {
+        els.flash.style.opacity = '1';
+        setTimeout(() => els.flash.style.opacity = '0', 200);
+    }
+
+    // === 2. ACTIVE SEARCH ENGINE ===
+
+    // Triangle Wave Oscillator for parameters
+    function getOscParam(t, period, min, max) {
+        const cycle = t % period;
+        const half = period / 2;
+        const pos = (cycle < half) ? cycle / half : (period - cycle) / half;
+        return min + pos * (max - min);
+    }
+
+    function sweepParameters() {
+        state.time++;
+        const t = state.time;
+        
+        // Only sweep if we are scanning AND the channel is not locked
+        if (state.scanning) {
+            ['R', 'G', 'B'].forEach(ch => {
+                if (!state.locked[ch.toLowerCase()]) {
+                    const cfg = state.config[ch];
+                    // Gain sweep: Fast (period 120 frames ~2s)
+                    cfg.gain = getOscParam(t, 120, 0.5, 4.0);
+                    // Offset sweep: Slower (period 300 frames ~5s)
+                    cfg.offset = getOscParam(t, 300, -100, 0);
+                }
             });
-            ctx.globalCompositeOperation = "source-over";
-            els.mini.getContext('2d').drawImage(els.main, 0, 0, 32, 32);
-            document.getElementById('save-btn').classList.toggle('hidden', !texts.some(t => t.trim()));
+        }
+    }
+
+    // === 3. PROCESSING LOOP ===
+
+    function processLoop() {
+        if (!state.scanning) return;
+
+        // 1. Get Data
+        let data = null;
+        let w = 512, h = 512;
+
+        if (els.video.style.display !== 'none' && els.video.readyState === els.video.HAVE_ENOUGH_DATA) {
+            els.ctx.drawImage(els.video, 0, 0, 512, 512);
+            data = els.ctx.getImageData(0, 0, 512, 512);
+        } else if (els.freeze.style.display !== 'none') {
+            // Static image processing is handled separately, but if we want loop on static:
+            data = els.fCtx.getImageData(0, 0, 512, 512);
         }
 
-        // --- УЛУЧШЕННЫЙ АЛГОРИТМ SCI ---
-        function processImageData(imgData, w, h) {
-            let foundInFrame = false;
-            const channels = [
-                { name: 'r', idx: 0, others: [1, 2] },
-                { name: 'g', idx: 1, others: [0, 2] },
-                { name: 'b', idx: 2, others: [0, 1] }
-            ];
+        if (data) {
+            // 2. Sweep Params (AUTO)
+            sweepParameters();
 
-            channels.forEach(ch => {
-                if (results[ch.name]) return;
+            // 3. Process & Scan All Channels
+            let anySuccess = false;
 
-                const buffer = new Uint8ClampedArray(w * h * 4);
-                for (let i = 0; i < imgData.data.length; i += 4) {
-                    let target = imgData.data[i + ch.idx];
-                    let other1 = imgData.data[i + ch.others[0]];
-                    let other2 = imgData.data[i + ch.others[1]];
-
-                    // Математическая очистка: вычитаем соседние цвета, чтобы убрать шум
-                    let clean = target - (other1 + other2) / 1.5;
-                    let val = clean > 40 ? 255 : 0; // Порог бинаризации
-
-                    buffer[i] = buffer[i+1] = buffer[i+2] = val;
-                    buffer[i+3] = 255;
-                }
-
-                const code = jsQR(buffer, w, h, { inversionAttempts: "attemptBoth" });
-                if (code) {
-                    results[ch.name] = code.data;
-                    els[ch.name].value = code.data;
-                    document.getElementById('ind-' + ch.name).className = 'field-indicator active-' + ch.name;
-                    foundInFrame = true;
-                    playBeep();
+            ['R', 'G', 'B'].forEach(ch => {
+                if (!state.locked[ch.toLowerCase()]) {
+                    // Apply SCI Math
+                    applySCI(data, ch);
+                    // Apply Bradley
+                    applyBradley(data);
+                    
+                    // Try to Decode
+                    const code = jsQR(data.data, 512, 512, { inversionAttempts: "attemptBoth" });
+                    
+                    if (code) {
+                        state.locked[ch.toLowerCase()] = true;
+                        state.results[ch.toLowerCase()] = code.data;
+                        playBeep();
+                        anySuccess = true;
+                    }
+                    
+                    // Restore data for next channel? No, SCI is destructive. 
+                    // We need to re-fetch raw data if we process multiple channels in one frame.
+                    // Optimizations: Usually we process one channel per frame to save FPS, 
+                    // but for "Super Task" we want aggression. 
+                    // Let's grab fresh data for each channel to avoid cross-polination.
+                    if (els.video.style.display !== 'none') els.ctx.drawImage(els.video, 0, 0, 512, 512);
+                    else els.fCtx.drawImage(els.freeze, 0, 0, 512, 512); // Redraw static
+                    data = (els.video.style.display !== 'none') ? els.ctx.getImageData(0,0,512,512) : els.fCtx.getImageData(0,0,512,512);
                 }
             });
-            if (foundInFrame) generateQR();
-            return foundInFrame;
+
+            // Visual update: show the last processed channel (B) or the locked one
+            // Since we overwrote 'data' in the loop, we show the result of the last attempt.
+            // To show the actual visual, we must re-process the active channel for display.
+            // Let's just show the raw video for now to save CPU, OR process one channel for preview.
+            
+            // 4. Update UI if success
+            if (anySuccess) updateUIFromState();
         }
 
-        async function startCamera() {
-            scanning = true;
-            els.vUI.classList.remove('hidden');
-            els.video.classList.remove('hidden');
-            els.closeBtn.classList.remove('hidden');
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        requestAnimationFrame(processLoop);
+    }
+
+    // === 4. ALGORITHMS ===
+
+    function applySCI(img, ch) {
+        const d = img.data;
+        const cfg = state.config[ch];
+        // We process to Grayscale directly in-place to save memory
+        for (let i = 0; i < d.length; i += 4) {
+            let r = d[i], g = d[i+1], b = d[i+2];
+            let target, n1, n2;
+            
+            if (ch === 'R') { target = r; n1 = g; n2 = b; }
+            else if (ch === 'G') { target = g; n1 = r; n2 = b; }
+            else { target = b; n1 = r; n2 = g; }
+
+            // Formula: (Target - (N1*k1 + N2*k2)) * Gain + Offset
+            let res = (target - (n1 * cfg.k1 + n2 * cfg.k2)) * cfg.gain + cfg.offset;
+            res = Math.max(0, Math.min(255, res));
+
+            d[i] = res; d[i+1] = res; d[i+2] = res; // Grayscale output
+        }
+    }
+
+    function applyBradley(img) {
+        const w = img.width, h = img.height;
+        const d = img.data;
+        const intImg = new Int32Array(w * h);
+        const s = 8; // Window size
+        const t = 0.15; // Threshold
+
+        // Compute Integral Image
+        for (let y = 0; y < h; y++) {
+            let sum = 0;
+            for (let x = 0; x < w; x++) {
+                const idx = y * w + x;
+                sum += d[idx * 4]; // R channel (gray)
+                intImg[idx] = (y > 0 ? intImg[(y - 1) * w + x] : 0) + sum;
+            }
+        }
+
+        // Apply Threshold
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const x1 = Math.max(0, x - s), x2 = Math.min(w - 1, x + s);
+                const y1 = Math.max(0, y - s), y2 = Math.min(h - 1, y + s);
+                const count = (x2 - x1) * (y2 - y1);
+                const sum = intImg[y2 * w + x2] - intImg[y1 * w + x2] - intImg[y2 * w + x1] + intImg[y1 * w + x1];
+                const val = d[(y * w + x) * 4];
+                const res = (val * count < sum * (1.0 - t)) ? 0 : 255;
+                d[(y * w + x) * 4] = res;
+                d[(y * w + x) * 4 + 1] = res;
+                d[(y * w + x) * 4 + 2] = res;
+            }
+        }
+    }
+
+    // === 5. ACTIONS ===
+
+    async function startCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 } } });
             els.video.srcObject = stream;
             els.video.play();
-            requestAnimationFrame(scanLoop);
+            els.video.style.display = 'block';
+            els.canvas.style.display = 'none';
+            els.freeze.style.display = 'none';
+            
+            state.scanning = true;
+            processLoop();
+        } catch (e) {
+            alert("Camera Error");
         }
+    }
 
-        function scanLoop() {
-            if (!scanning) return;
-            if (els.video.readyState === els.video.HAVE_ENOUGH_DATA) {
-                const cv = document.createElement('canvas');
-                cv.width = 400; cv.height = 400;
-                const ctx = cv.getContext('2d');
-                ctx.drawImage(els.video, 0, 0, 400, 400);
-                if (processImageData(ctx.getImageData(0,0,400,400), 400, 400)) {
-                    els.vUI.classList.add('targeting');
-                    setTimeout(() => els.vUI.classList.remove('targeting'), 500);
+    function handleFile(e) {
+        const file = e.target.files[0]; if(!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const img = new Image();
+            img.onload = () => {
+                els.freeze.width = 512; els.freeze.height = 512;
+                // Crop center
+                const s = Math.min(img.width, img.height);
+                const sx = (img.width - s)/2, sy = (img.height - s)/2;
+                els.fCtx.drawImage(img, sx, sy, s, s, 0, 0, 512, 512);
+                
+                els.freeze.style.display = 'block';
+                els.video.style.display = 'none';
+                els.canvas.style.display = 'none';
+
+                state.scanning = true;
+                processLoop();
+            };
+            img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function globalReset() {
+        state.scanning = false;
+        state.locked = {r:false, g:false, b:false};
+        state.results = {r:null, g:null, b:null};
+        state.time = 0;
+        els.r.value = ""; els.g.value = ""; els.b.value = "";
+        updateUIFromState();
+        
+        if(els.video.srcObject) els.video.srcObject.getTracks().forEach(t => t.stop());
+        els.video.style.display = 'none';
+        els.freeze.style.display = 'none';
+        els.canvas.style.display = 'block';
+        
+        toggleMainUI();
+        generateQR(); // Clear canvas
+    }
+
+    // === 6. GENERATOR ===
+    function generateQR() {
+        const texts = [els.r.value, els.g.value, els.b.value];
+        if (!texts.some(t => t.trim())) return;
+        
+        let maxVer = 1;
+        texts.forEach(t => { if(t.trim()){ const tmp=qrcode(0,'M'); tmp.addData(t); tmp.make(); const v=Math.floor((tmp.getModuleCount()-17)/4); if(v>maxVer)maxVer=v; }});
+        
+        els.ctx.fillStyle = "#000"; els.ctx.fillRect(0,0,512,512);
+        els.ctx.globalCompositeOperation = "lighten";
+        
+        texts.forEach((text, i) => {
+            if(!text.trim()) return;
+            const qr = qrcode(maxVer, 'M'); qr.addData(text); qr.make();
+            const mod = 512 / qr.getModuleCount();
+            els.ctx.fillStyle = i === 0 ? "#FF0000" : (i === 1 ? "#00FF00" : "#0000FF");
+            for(let r=0; r<qr.getModuleCount(); r++){
+                for(let c=0; c<qr.getModuleCount(); c++){
+                    if(qr.isDark(r,c)) els.ctx.fillRect(c*mod, r*mod, mod, mod);
                 }
             }
-            requestAnimationFrame(scanLoop);
-        }
+        });
+        els.ctx.globalCompositeOperation = "source-over";
+    }
 
-        function handleFile(e) {
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                const img = new Image();
-                img.onload = () => {
-                    const cv = document.createElement('canvas');
-                    cv.width = 800; cv.height = 800;
-                    const ctx = cv.getContext('2d');
-                    ctx.drawImage(img, 0, 0, 800, 800);
-                    processImageData(ctx.getImageData(0,0,800,800), 800, 800);
-                    els.freeze.getContext('2d').drawImage(img, 0,0, els.freeze.width, els.freeze.height);
-                    els.freeze.classList.remove('hidden');
-                };
-                img.src = ev.target.result;
-            };
-            reader.readAsDataURL(e.target.files[0]);
-        }
-
-        function globalReset() {
-            scanning = false;
-            if (els.video.srcObject) els.video.srcObject.getTracks().forEach(t => t.stop());
-            els.video.classList.add('hidden');
-            els.freeze.classList.add('hidden');
-            els.vUI.classList.add('hidden');
-            els.closeBtn.classList.add('hidden');
-            els.btnMain.classList.remove('hidden');
-            els.btnActions.classList.add('hidden');
-            results = {r:null, g:null, b:null};
-            ['r','g','b'].forEach(c => {
-                els[c].value = "";
-                document.getElementById('ind-'+c).className = 'field-indicator';
-            });
-            generateQR();
-        }
-
-        function showActions() { els.btnMain.classList.add('hidden'); els.btnActions.classList.remove('hidden'); }
-        function triggerFile() { document.getElementById('file-input').click(); }
-        function saveQR() { const a = document.createElement('a'); a.download = 'RGB.png'; a.href = els.main.toDataURL(); a.click(); }
-        function playBeep() { /* Simple beep logic */ }
-
-        [els.r, els.g, els.b].forEach(el => el.addEventListener('input', generateQR));
+    function saveQR() {
+        // Generate high-res for save
         generateQR();
-    </script>
+        const a = document.createElement('a');
+        a.href = els.canvas.toDataURL();
+        a.download = 'rgb11_result.png';
+        a.click();
+    }
+
+    // Init inputs listeners
+    [els.r, els.g, els.b].forEach(el => el.addEventListener('input', generateQR));
+
+</script>
 </body>
 </html>
